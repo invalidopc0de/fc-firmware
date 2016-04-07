@@ -1,4 +1,6 @@
-#include "AVISIM/src/algorithm.h"
+#include "algorithm.h"
+
+#include <stdint.h>
 
 uint32_t samples[30];
 uint32_t* current_sample;
@@ -17,7 +19,7 @@ uint32_t currentRocketState = 0;
 // Called on device initialization
 void init_algorithm(DeviceSpec* device)
 {
-    current_sample = m_samples;
+    current_sample = samples;
 }
 
 // Called on an interval
