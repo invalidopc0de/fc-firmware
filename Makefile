@@ -13,14 +13,14 @@ CFLAGS=-c -Wall -g -I$(AVISIM_INC)
 
 all: sim_test
 
-sim_test: sim_test.o $(LIB_PATH)/control_loop.o $(AVISIM_OBJS) 
+sim_test: sim_test.o src/control_loop.o $(AVISIM_OBJS) 
 	$(CC) sim_test.o control_loop.o $(AVISIM_OBJS) -o sim_test -lm
 
 sim_test.o: sim_test.c
 	$(CC) $(CFLAGS) sim_test.c
 
-$(LIB_PATH)/control_loop.o: $(LIB_PATH)/control_loop.c
-	$(CC) $(CFLAGS) $(LIB_PATH)/control_loop.c
+src/control_loop.o: src/control_loop.c
+	$(CC) $(CFLAGS) src/control_loop.c
 
 #avisim:
 	# Build AVISIM here

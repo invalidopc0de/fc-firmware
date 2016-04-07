@@ -36,6 +36,8 @@ ALG_SRC=$(PROJECT_ROOT)/src
 CPP_FILES = $(wildcard $(SRCDIR)/*.cpp)
 C_FILES = $(wildcard $(SRCDIR)/*.c) $(ALG_SRC)/control_loop.c
 
+ARDUINO_LIB_DIR = $(HOME)/Arduino/libraries
+
 #  Change project C & C++ files into object files
 OBJ_FILES := $(addprefix $(OBJDIR)/,$(notdir $(CPP_FILES:.cpp=.cpp.o))) $(addprefix $(OBJDIR)/,$(notdir $(C_FILES:.c=.c.o)))
 
@@ -44,14 +46,8 @@ OBJ_FILES := $(addprefix $(OBJDIR)/,$(notdir $(CPP_FILES:.cpp=.cpp.o))) $(addpre
 #  won't be sharing the object files for these. Thus, we only put things here
 #  that need to be compiled locally (*.c, *.cpp, *.s). No libries (*.a, *.lib)
 #  go here.
-#OBJ_FILES += $(OBJDIR)/pins_teensy.o $(OBJDIR)/yield.cpp.o $(OBJDIR)/analog.o $(OBJDIR)/mk20dx128.o \
-#    $(OBJDIR)/HardwareSerial1.cpp.o $(OBJDIR)/serial1.o \
-#    $(OBJDIR)/HardwareSerial2.cpp.o $(OBJDIR)/serial2.o \
-#    $(OBJDIR)/HardwareSerial3.cpp.o $(OBJDIR)/serial3.o \
-#    $(OBJDIR)/ser_print.o $(OBJDIR)/Print.cpp.o $(OBJDIR)/usb_inst.cpp.o \
-#    $(OBJDIR)/usb_serial.o  $(OBJDIR)/usb_dev.o $(OBJDIR)/usb_mem.o \
-#    $(OBJDIR)/usb_desc.o $(OBJDIR)/nonstd.o
-    
+#OBJ_FILES += $(OBJDIR)/pins_teensy.o $(OBJDIR)/yield.cpp.o $(OBJDIR)/analog.o $(OBJDIR)/mk20dx128.o 
+OBJ_FILES += $(OBJDIR)/memcpy-armv7m.S.o
 
 #  Next we need to define some things in order for Teensyduino to work.
 #  Teensyduino in generaly will not throw any errors or generate any warnings if
@@ -81,7 +77,6 @@ TEENSY3X_CFILES = $(wildcard $(TEENSY3X_BASEPATH)/*.c)
 TEENSY3X_CPPFILES = $(wildcard $(TEENSY3X_BASEPATH)/*.cpp)
 
 OBJ_FILES += $(addprefix $(OBJDIR)/,$(notdir $(TEENSY3X_CPPFILES:.cpp=.cpp.o))) $(addprefix $(OBJDIR)/,$(notdir $(TEENSY3X_CFILES:.c=.c.o)))
-
 
 #
 #  Select the target type.  This is typically arm-none-eabi.
@@ -158,7 +153,7 @@ ASFLAGS = -mcpu=$(CPU) -x assembler-with-cpp
 #  Linker options
 #  Since we are using gcc as the linker rather than ld, we need to pass linker
 #  specific options with the -Wl,<option>,<value> format.
-LDFLAGS  = -Os -Wl,--gc-sections,--relax,--defsym,__rtc_localtime=1 -mcpu=cortex-m4 -mthumb -T$(LSCRIPT) -Wl,-Map,$(OUTPUTDIR)/$(PROJECT).map
+LDFLAGS  = -Os -Wl,--gc-sections,--relax,--defsym,__rtc_localtime=0 --specs=nano.specs -mcpu=cortex-m4 -mthumb -T$(LSCRIPT) -Wl,-Map,$(OUTPUTDIR)/$(PROJECT).map
 LDFLAGS += $(LIBDIRS)
 LDFLAGS += $(LIBS)
 
@@ -193,12 +188,13 @@ $(OUTPUTDIR)/$(PROJECT).bin: $(OUTPUTDIR)/$(PROJECT).elf
 	$(OBJCOPY) -O binary -j .text -j .data $(OUTPUTDIR)/$(PROJECT).elf $(OUTPUTDIR)/$(PROJECT).bin
 
 $(OUTPUTDIR)/$(PROJECT).hex: $(OUTPUTDIR)/$(PROJECT).elf
-	$(OBJCOPY) -R .stack -O ihex $(OUTPUTDIR)/$(PROJECT).elf $(OUTPUTDIR)/$(PROJECT).hex
-
+	#$(OBJCOPY) -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma .eeprom=0 $(OUTPUTDIR)/$(PROJECT).elf 
+	$(OBJCOPY) -O ihex -R .eeprom $(OUTPUTDIR)/$(PROJECT).elf $(OUTPUTDIR)/$(PROJECT).hex
+   
 #  Linker invocation
 $(OUTPUTDIR)/$(PROJECT).elf: $(OBJ_FILES)
 	@mkdir -p $(dir $@)
-	$(CPP) $(OBJ_FILES) $(LDFLAGS) -o $(OUTPUTDIR)/$(PROJECT).elf
+	$(CC) $(OBJ_FILES) $(LDFLAGS) -o $(OUTPUTDIR)/$(PROJECT).elf
 
 stats: $(OUTPUTDIR)/$(PROJECT).elf
 	$(SIZE) $(OUTPUTDIR)/$(PROJECT).elf
@@ -256,16 +252,11 @@ $(OBJDIR)/%.cpp.o : $(TEENSY3X_BASEPATH)/%.cpp
 	@echo Compiling $<, writing to $@...
 	@mkdir -p $(dir $@)
 	$(CPP) $(GCFLAGS) $(CPPFLAGS)  -c $< -o $@ > $(basename $@).lst
-	
-$(OBJDIR)/%.o : $(SRCDIR)/%.cpp
-	@mkdir -p $(dir $@)
-	@echo Compiling $<, writing to $@...
-	$(CC) $(GCFLAGS) -c $< -o $@
 
 $(OBJDIR)/%.c.o : $(TEENSY3X_BASEPATH)/%.cpp
 	@mkdir -p $(dir $@)
 	@echo Compiling $<, writing to $@...
-	$(CC) $(GCFLAGS) -c $< -o $@
+	$(CPP) $(GCFLAGS) $(CPPFLAGS)  -c $< -o $@ > $(basename $@).lst
     
 $(OBJDIR)/%.c.o : $(ALG_SRC)/%.c
 	@echo Compiling $<, writing to $@...
@@ -276,6 +267,18 @@ $(OBJDIR)/%.c.o : $(SIM_SRC)/%.c
 	@echo Compiling $<, writing to $@...
 	@mkdir -p $(dir $@)
 	$(CC) $(GCFLAGS) -c $< -o $@ > $(basename $@).lst
+    
+$(OBJDIR)/%.c.o : $(ARDUINO_LIB_DIR)/%.c
+	@echo Compiling $<, writing to $@...
+	@mkdir -p $(dir $@)
+	$(CC) $(GCFLAGS) -c $< -o $@ > $(basename $@).lst
+    
+
+$(OBJDIR)/%.cpp.o : $(ARDUINO_LIB_DIR)/%.cpp
+	@echo Compiling $<, writing to $@...
+	@mkdir -p $(dir $@)
+	$(CPP) $(GCFLAGS) $(CPPFLAGS)  -c $< -o $@ > $(basename $@).lst
+    
 
 #  There are two options for assembling .s files to .o; uncomment only one.
 #  The shorter option is suitable for making from the command-line.
@@ -283,9 +286,14 @@ $(OBJDIR)/%.c.o : $(SIM_SRC)/%.c
 #  compile from Visual Studio; the sed script reformats error messages
 #  so Visual Studio's IntelliSense feature can track back to the source
 #  file with the error.
-$(OBJDIR)/%.o : $(SRCDIR)/%.s
+$(OBJDIR)/%.S.o : $(SRCDIR)/%.s
 	@echo Assembling $<, writing to $@...
 	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) -o $@ $<  > $(basename $@).lst
+    
+$(OBJDIR)/%.S.o : $(TEENSY3X_BASEPATH)/%.s
+	@echo Assembling $<, writing to $@...
+	@mkdir -p $(dir $@)
+	$(CC) $(GCFLAGS) $(ASFLAGS) -o $@ $<  > $(basename $@).lst
 #	$(AS) $(ASFLAGS) -o $@ $<  2>&1 | sed -e 's/\(\w\+\):\([0-9]\+\):/\1(\2):/'
 #########################################################################

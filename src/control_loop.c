@@ -1,4 +1,4 @@
-#include "algorithm.h"
+#include "../libs/AVISIM/src/algorithm.h"
 
 #include <stdint.h>
 
@@ -20,10 +20,12 @@ uint32_t currentRocketState = 0;
 void init_algorithm(DeviceSpec* device)
 {
     current_sample = samples;
+    //fireCharge(device, 1);
 }
 
 // Called on an interval
 void eval_algorithm(DeviceSpec* device)
 {
     // Read from the sensors
+    //fireCharge(device, 1);
 }

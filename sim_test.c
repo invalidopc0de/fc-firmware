@@ -1,7 +1,7 @@
 #include <stdio.h>
 
-#include "AVISIM/src/avisim.h"
-#include "AVISIM/src/algorithm.h"
+#include "libs/AVISIM/src/avisim.h"
+#include "libs/AVISIM/src/algorithm.h"
 
 int main()
 {

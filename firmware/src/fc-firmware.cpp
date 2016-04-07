@@ -1,12 +1,7 @@
-#include "Arduino.h"
-
 #include "algorithm.h"
 
-/*
-  Blink
-  Turns on an LED on for one second, then off for one second, repeatedly.
-  This example code is in the public domain.
- */
+#include "Arduino.h"
+
  
 DeviceSpec spec;
 
@@ -15,7 +10,9 @@ void fire_charge(int)
     digitalWrite(13, HIGH);
 }
 
-void setup() {                
+void setup() {       
+    //Serial.begin(9600);
+     
 	// initialize the digital pin as an output.
 	// Pin 13 has an LED connected on most Arduino boards:
 	pinMode(13, OUTPUT);     
@@ -24,10 +21,15 @@ void setup() {
     
     spec.fire_charge = fire_charge;
     
-    init_algorithm(&spec);
+    //init_algorithm(&spec);
 }
 
 void loop() {
-    eval_algorithm(&spec);
-	delay(1000);     
+     //Serial.println("Hello");
+    
+    //eval_algorithm(&spec);
+    digitalWrite(13, LOW);
+	delay(1000);   
+    digitalWrite(13, LOW);
+    delay(1000);  
 }
